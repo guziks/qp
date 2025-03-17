@@ -16,6 +16,10 @@ qp <source directory> <destination directory>
 
 ## Build
 
+Make sure you have installed [Go](https://go.dev/) and [Just](https://just.systems/).
+
+Execute:
+
 ```
-go build -o qp cmd/main.go
+just build
 ```
