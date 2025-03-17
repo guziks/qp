@@ -13,3 +13,9 @@ A tool to recursively copy files and directories so that timestamps are in order
 ```
 qp <source directory> <destination directory>
 ```
+
+## Build
+
+```
+go build -o qp cmd/main.go
+```
