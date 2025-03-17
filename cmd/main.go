@@ -5,19 +5,17 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 )
 
-// Sleep function to enforce timestamp ordering
+// sleep function to enforce timestamp ordering
 func sleep(ms int) {
 	time.Sleep(time.Duration(ms) * time.Millisecond)
 }
 
-// Get all files and directories in sorted order
+// getFilesAndDirs retrieves all files and directories in sorted order
 func getFilesAndDirs(src string) ([]string, []string, error) {
-	var files []string
-	var dirs []string
+	var files, dirs []string
 
 	err := filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -36,17 +34,13 @@ func getFilesAndDirs(src string) ([]string, []string, error) {
 	})
 
 	// Sort directories and files in natural order
-	sort.Slice(dirs, func(i, j int) bool {
-		return strings.Compare(dirs[i], dirs[j]) < 0
-	})
-	sort.Slice(files, func(i, j int) bool {
-		return strings.Compare(files[i], files[j]) < 0
-	})
+	sort.Strings(dirs)
+	sort.Strings(files)
 
 	return files, dirs, err
 }
 
-// Copy directories sequentially
+// copyDirectories sequentially creates directories in the destination
 func copyDirectories(src, dest string, dirs []string) error {
 	for i, dir := range dirs {
 		destPath := filepath.Join(dest, dir)
@@ -60,54 +54,48 @@ func copyDirectories(src, dest string, dirs []string) error {
 	return nil
 }
 
-// Copy files sequentially
+// copyFiles sequentially copies files
 func copyFiles(src, dest string, files []string) error {
 	for i, file := range files {
 		srcPath := filepath.Join(src, file)
 		destPath := filepath.Join(dest, file)
 
 		// Ensure parent directories exist
-		err := os.MkdirAll(filepath.Dir(destPath), os.ModePerm)
-		if err != nil {
+		if err := os.MkdirAll(filepath.Dir(destPath), os.ModePerm); err != nil {
 			return err
 		}
 
-		// Copy file
+		// Copy file content
 		input, err := os.ReadFile(srcPath)
 		if err != nil {
 			return err
 		}
-		err = os.WriteFile(destPath, input, os.ModePerm)
-		if err != nil {
+		if err := os.WriteFile(destPath, input, os.ModePerm); err != nil {
 			return err
 		}
 
 		// Update timestamps
 		now := time.Now()
-		err = os.Chtimes(destPath, now, now)
-		if err != nil {
+		if err := os.Chtimes(destPath, now, now); err != nil {
 			return err
 		}
 
 		fmt.Printf("[FILE] %d/%d Copied: %s\n", i+1, len(files), destPath)
-		sleep(100) // Small delay for timestamp order
+		sleep(100) // Small delay for proper timestamp order
 	}
 	return nil
 }
 
 func main() {
-	// Get CLI arguments
 	if len(os.Args) < 3 {
 		fmt.Println("Usage: qp <source> <destination>")
 		os.Exit(1)
 	}
-	src := os.Args[1]
-	dest := os.Args[2]
+	src, dest := os.Args[1], os.Args[2]
 
 	fmt.Printf("📂 Copying from: %s\n", src)
 	fmt.Printf("📂 Copying to:   %s\n\n", dest)
 
-	// Get files and directories
 	fmt.Println("🔍 Scanning source directory...")
 	files, dirs, err := getFilesAndDirs(src)
 	if err != nil {
@@ -116,18 +104,14 @@ func main() {
 	}
 	fmt.Printf("📁 Found %d directories and %d files.\n\n", len(dirs), len(files))
 
-	// Copy directories
 	fmt.Println("📂 Copying directories...")
-	err = copyDirectories(src, dest, dirs)
-	if err != nil {
+	if err := copyDirectories(src, dest, dirs); err != nil {
 		fmt.Println("Error copying directories:", err)
 		os.Exit(1)
 	}
 
-	// Copy files
 	fmt.Println("\n📄 Copying files...")
-	err = copyFiles(src, dest, files)
-	if err != nil {
+	if err := copyFiles(src, dest, files); err != nil {
 		fmt.Println("Error copying files:", err)
 		os.Exit(1)
 	}
