@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -86,12 +88,59 @@ func copyFiles(src, dest string, files []string) error {
 	return nil
 }
 
+// promptInput asks the user for input with the given prompt and returns the input string
+func promptInput(prompt string) string {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print(prompt)
+	input, _ := reader.ReadString('\n')
+	return strings.TrimSpace(input)
+}
+
+// waitForExit waits for the user to press Enter before exiting
+func waitForExit() {
+	fmt.Print("\nPress Enter to exit...")
+	bufio.NewReader(os.Stdin).ReadBytes('\n')
+}
+
 func main() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: qp <source> <destination>")
-		os.Exit(1)
+	var src, dest string
+	isInteractive := false
+
+	// Check if arguments were provided
+	if len(os.Args) >= 3 || (len(os.Args) > 1 && (os.Args[1] == "-h" || os.Args[1] == "--help")) {
+		// Show usage if -h or --help flag is provided
+		if len(os.Args) > 1 && (os.Args[1] == "-h" || os.Args[1] == "--help") {
+			fmt.Println("Usage: qp <source> <destination>")
+			os.Exit(0)
+		}
+
+		// Get source and destination from command line arguments
+		src, dest = os.Args[1], os.Args[2]
+	} else {
+		isInteractive = true
+		fmt.Println("🖥️  Interactive Mode")
+		fmt.Println("--------------------")
+
+		// Prompt for source path
+		src = promptInput("Enter source path: ")
+		if src == "" {
+			fmt.Println("❌ Source path cannot be empty.")
+			if isInteractive {
+				waitForExit()
+			}
+			os.Exit(1)
+		}
+
+		// Prompt for destination path
+		dest = promptInput("Enter destination path: ")
+		if dest == "" {
+			fmt.Println("❌ Destination path cannot be empty.")
+			if isInteractive {
+				waitForExit()
+			}
+			os.Exit(1)
+		}
 	}
-	src, dest := os.Args[1], os.Args[2]
 
 	fmt.Printf("📂 Copying from: %s\n", src)
 	fmt.Printf("📂 Copying to:   %s\n\n", dest)
@@ -100,6 +149,9 @@ func main() {
 	files, dirs, err := getFilesAndDirs(src)
 	if err != nil {
 		fmt.Println("Error scanning source:", err)
+		if isInteractive {
+			waitForExit()
+		}
 		os.Exit(1)
 	}
 	fmt.Printf("📁 Found %d directories and %d files.\n\n", len(dirs), len(files))
@@ -107,14 +159,25 @@ func main() {
 	fmt.Println("📂 Copying directories...")
 	if err := copyDirectories(src, dest, dirs); err != nil {
 		fmt.Println("Error copying directories:", err)
+		if isInteractive {
+			waitForExit()
+		}
 		os.Exit(1)
 	}
 
 	fmt.Println("\n📄 Copying files...")
 	if err := copyFiles(src, dest, files); err != nil {
 		fmt.Println("Error copying files:", err)
+		if isInteractive {
+			waitForExit()
+		}
 		os.Exit(1)
 	}
 
 	fmt.Println("\n✅ Copy completed successfully!")
+
+	// If in interactive mode, wait for user to press Enter before exiting
+	if isInteractive {
+		waitForExit()
+	}
 }
